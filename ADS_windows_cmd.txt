@@ -1,0 +1,462 @@
+PRACTICAL 5: Alternate Data Streams (ADS)
+
+============================================================
+AIM
+============================================================
+
+To study and implement Alternate Data Streams (ADS) in the NTFS file system 
+for hiding files and to explore techniques for detecting and removing hidden streams.
+
+============================================================
+OBJECTIVE
+============================================================
+
+• Understand what ADS is and how it works on NTFS
+• Create hidden data streams using Command Prompt
+• Hide executable/text content inside innocent-looking files
+• Detect ADS using built-in and PowerShell tools
+• Counter/remove ADS from files
+
+============================================================
+REQUIREMENTS
+============================================================
+
+• Windows VM (Windows 10/11 or Windows Server)
+• Command Prompt
+• PowerShell
+• NTFS formatted drive (ADS does NOT work on FAT32/exFAT)
+
+============================================================
+THEORY
+============================================================
+
+Alternate Data Streams (ADS) is a feature of the NTFS file system 
+that allows files to contain multiple streams of data. Normally, users
+can only see the main content of a file, while hidden streams remain invisible in standard directory listings.
+
+Attackers and malware often misuse ADS to:
+• Hide malicious payloads
+• Conceal scripts or sensitive information
+• Evade simple detection techniques
+
+Security analysts and forensic investigators use ADS detection techniques to uncover hidden streams and remove them.
+
+============================================================
+STEP-BY-STEP PRACTICAL PROCEDURE
+============================================================
+
+============================================================
+PHASE 1 — Setup Working Environment
+============================================================
+
+Step 1: Open Command Prompt
+
+Open Command Prompt as Administrator.
+
+Method:
+Press Win + R → type cmd → Enter
+OR
+Search "cmd" → Run as Administrator
+
+------------------------------------------------------------
+
+Step 2: Create Dedicated Working Folder
+
+Commands:
+
+cd C:\
+mkdir ADS_Lab
+cd ADS_Lab
+
+Purpose:
+Creates a clean working directory so all ADS experiments remain organized.
+
+============================================================
+PHASE 2 — Create Normal Files
+============================================================
+
+Step 3: Create a Normal Visible Text File
+
+Command:
+
+echo This is a normal visible file. > normal.txt
+
+------------------------------------------------------------
+
+Step 4: Verify File Exists and Check Content
+
+Commands:
+
+type normal.txt
+dir normal.txt
+
+Purpose:
+Creates and verifies a normal text file.
+
+Observation:
+You will see the file size displayed normally.
+
+============================================================
+PHASE 3 — Create Alternate Data Streams
+============================================================
+
+Step 5: Hide Secret Text Inside normal.txt Using ADS
+
+Command:
+
+echo This is SECRET hidden data inside ADS! > normal.txt:hidden.txt
+
+Purpose:
+Creates a hidden stream named hidden.txt attached to normal.txt.
+
+Explanation:
+The syntax filename:streamname creates an Alternate Data Stream.
+
+------------------------------------------------------------
+
+Step 6: Verify Main File Size Did NOT Change
+
+Command:
+
+dir normal.txt
+
+Observation:
+The file size remains almost unchanged even though hidden data exists.
+
+Reason:
+ADS content is not shown in normal directory listing.
+
+------------------------------------------------------------
+
+Step 7: Read the Hidden Stream
+
+Command:
+
+more < normal.txt:hidden.txt
+
+Purpose:
+Displays the hidden ADS content directly.
+
+============================================================
+PHASE 4 — Multiple Hidden Streams
+============================================================
+
+Step 8: Add Another Stream to Same File
+
+Command:
+
+echo Attacker's second payload here! > normal.txt:payload2.txt
+
+Purpose:
+Demonstrates that multiple hidden streams can exist in one file.
+
+------------------------------------------------------------
+
+Step 9: Create ADS on a Folder
+
+Commands:
+
+echo Hidden in a FOLDER stream > ADS_Lab:folderhidden.txt
+more < ADS_Lab:folderhidden.txt
+
+Purpose:
+Demonstrates that ADS can also be attached to folders.
+
+------------------------------------------------------------
+
+Step 10: Create File with No Visible Main Content but Hidden Stream
+
+Commands:
+
+echo. > carrier.txt
+echo TOP SECRET CONTENT > carrier.txt:secret
+type carrier.txt
+more < carrier.txt:secret
+
+Purpose:
+Creates a nearly empty visible file carrying hidden ADS content.
+
+Observation:
+carrier.txt appears empty but contains hidden data in the :secret stream.
+
+============================================================
+PHASE 5 — Hide Executable in ADS (Advanced)
+============================================================
+
+Step 11: Copy Executable into ADS Stream
+
+Command:
+
+type C:\Windows\System32\calc.exe > normal.txt:malware.exe
+
+Purpose:
+Copies Calculator executable into hidden ADS stream.
+
+------------------------------------------------------------
+
+Step 12: Run Hidden Executable from ADS Stream
+
+Command:
+
+wmic process call create "C:\ADS_Lab\normal.txt:malware.exe"
+
+Alternative Command:
+
+start "" "C:\ADS_Lab\normal.txt:malware.exe"
+
+Purpose:
+Launches executable hidden inside ADS.
+
+Note:
+This is for educational demonstration only.
+
+============================================================
+PHASE 6 — Detection Techniques
+============================================================
+
+Step 13: Use dir /r to Reveal All Streams
+
+Command:
+
+dir /r
+
+Purpose:
+Displays Alternate Data Streams associated with files.
+
+------------------------------------------------------------
+
+Step 14: Use dir /r on Specific File
+
+Command:
+
+dir /r normal.txt
+
+Purpose:
+Displays ADS attached specifically to normal.txt.
+
+------------------------------------------------------------
+
+Step 15: Detect ADS Using PowerShell
+
+Command:
+
+powershell -command "Get-Item C:\ADS_Lab\normal.txt -Stream *"
+
+Purpose:
+Lists all streams attached to the file.
+
+------------------------------------------------------------
+
+Step 16: List All Streams in Folder Using PowerShell
+
+Command:
+
+powershell -command "Get-ChildItem C:\ADS_Lab | ForEach-Object { Get-Item $_.FullName -Stream * }"
+
+Purpose:
+Displays ADS information for all files in the folder.
+
+------------------------------------------------------------
+
+Step 17: Read Specific ADS Using PowerShell
+
+Command:
+
+powershell -command "Get-Content C:\ADS_Lab\normal.txt -Stream hidden.txt"
+
+Purpose:
+Reads hidden stream content directly.
+
+============================================================
+PHASE 7 — Counter / Removal Techniques
+============================================================
+
+Step 18: Remove Specific ADS Stream
+
+Command:
+
+powershell -command "Remove-Item C:\ADS_Lab\normal.txt -Stream hidden.txt"
+
+Purpose:
+Deletes the hidden ADS stream.
+
+------------------------------------------------------------
+
+Step 19: Verify Stream Removal
+
+Command:
+
+dir /r normal.txt
+
+Observation:
+Removed stream no longer appears.
+
+------------------------------------------------------------
+
+Step 20: Remove All ADS by Copying File
+
+Command:
+
+copy normal.txt cleaned_normal.txt
+dir /r cleaned_normal.txt
+
+Purpose:
+Copy command transfers only the main data stream and leaves ADS behind.
+
+Observation:
+cleaned_normal.txt becomes free from ADS.
+
+------------------------------------------------------------
+
+Step 21: Remove All ADS Using PowerShell
+
+Command:
+
+powershell -command "Get-Item C:\ADS_Lab\normal.txt -Stream * | Where-Object {$_.Stream -ne ':$DATA'} | Remove-Item"
+
+Purpose:
+Deletes all ADS streams except the main data stream.
+
+============================================================
+PHASE 8 — Final Verification
+============================================================
+
+Step 22: Final Check of All Files and Streams
+
+Command:
+
+dir /r C:\ADS_Lab\
+
+Purpose:
+Displays all remaining files and ADS streams.
+
+------------------------------------------------------------
+
+Step 23: Verify Remaining Streams on normal.txt
+
+Command:
+
+powershell -command "Get-Item C:\ADS_Lab\normal.txt -Stream *"
+
+Purpose:
+Confirms whether ADS still exists.
+
+============================================================
+EXPECTED OUTPUT
+============================================================
+
+• ADS streams created successfully
+• Hidden streams remain invisible in normal directory view
+• dir /r reveals hidden streams
+• PowerShell detects ADS successfully
+• Hidden streams can be removed successfully
+
+============================================================
+COMMON ERRORS AND FIXES
+============================================================
+
+1. ADS not working
+Reason:
+Drive is FAT32/exFAT
+
+Fix:
+Use NTFS drive (C: drive recommended)
+
+------------------------------------------------------------
+
+2. Hidden stream not visible
+Reason:
+Wrong stream name used
+
+Fix:
+Verify stream name using:
+dir /r
+
+------------------------------------------------------------
+
+3. Executable not running from ADS
+Reason:
+Windows Defender or permissions issue
+
+Fix:
+Use VM environment or run Command Prompt as Administrator
+
+------------------------------------------------------------
+
+4. WMIC deprecated warning
+Reason:
+WMIC deprecated in newer Windows versions
+
+Fix:
+Use:
+start "" "C:\ADS_Lab\normal.txt:malware.exe"
+
+------------------------------------------------------------
+
+5. Access Denied Error
+Reason:
+Insufficient permissions
+
+Fix:
+Reopen Command Prompt as Administrator
+
+============================================================
+CONCLUSION
+============================================================
+
+In this practical, Alternate Data Streams (ADS) were successfully created, 
+detected, and removed using Windows Command Prompt and PowerShell. The experiment 
+demonstrated how attackers can hide information inside legitimate files and how
+forensic investigators can detect and remove hidden streams for security purposes.
+
+============================================================
+VIVA QUESTIONS
+============================================================
+
+1. What is ADS?
+ADS (Alternate Data Streams) is a feature of NTFS that allows multiple hidden streams inside a file.
+
+------------------------------------------------------------
+
+2. Which file system supports ADS?
+NTFS supports ADS.
+
+------------------------------------------------------------
+
+3. Why is ADS dangerous?
+Attackers can hide malware or secret data inside legitimate files.
+
+------------------------------------------------------------
+
+4. Which command reveals ADS?
+dir /r
+
+------------------------------------------------------------
+
+5. Which PowerShell command lists ADS streams?
+Get-Item filename -Stream *
+
+------------------------------------------------------------
+
+6. Can folders contain ADS?
+Yes, folders can also contain Alternate Data Streams.
+
+------------------------------------------------------------
+
+7. How can ADS be removed?
+Using Remove-Item -Stream or by copying file data to a clean file.
+
+------------------------------------------------------------
+
+8. Is ADS visible in normal File Explorer?
+No, ADS remains hidden in standard file listings.
+
+------------------------------------------------------------
+
+9. What is the cybersecurity significance of ADS?
+ADS is used in malware hiding, persistence, and forensic evasion techniques.
+
+------------------------------------------------------------
+
+10. What is the main purpose of this practical?
+To understand NTFS hidden streams and learn ADS detection/removal techniques
