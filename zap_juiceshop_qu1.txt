@@ -1,0 +1,308 @@
+================================================================
+PRACTICAL 1: Introduction to Vulnerabilities and OWASP Top 10
+Tools Used: OWASP Juice Shop, OWASP ZAP, Kali Linux, Docker
+================================================================
+
+AIM:
+To set up OWASP Juice Shop on Kali Linux, configure OWASP ZAP 
+as an intercepting proxy, and identify web application 
+vulnerabilities including XSS and SQL Injection with reference 
+to the OWASP Top 10.
+
+================================================================
+BRIEF THEORY
+================================================================
+
+OWASP (Open Web Application Security Project):
+A non-profit foundation that publishes security standards and 
+tools used worldwide by security professionals.
+
+OWASP Top 10 (2021) - Most Critical Web Vulnerabilities:
+A01 - Broken Access Control
+A02 - Cryptographic Failures
+A03 - Injection (SQL Injection, XSS fall here)
+A04 - Insecure Design
+A05 - Security Misconfiguration
+A06 - Vulnerable and Outdated Components
+A07 - Identification and Authentication Failures
+A08 - Software and Data Integrity Failures
+A09 - Security Logging and Monitoring Failures
+A10 - Server Side Request Forgery (SSRF)
+
+OWASP Juice Shop:
+An intentionally vulnerable web application used for security 
+training. It looks like a real e-commerce site but contains 
+over 100 built-in vulnerabilities for practice.
+
+OWASP ZAP (Zed Attack Proxy):
+A free security tool that acts as a proxy between your browser 
+and the web application. It intercepts and logs all HTTP 
+traffic, allowing you to see and analyze requests and responses.
+
+Proxy Flow:
+Browser → ZAP (port 8080) → Juice Shop (port 3000)
+
+XSS (Cross-Site Scripting):
+Attacker injects malicious JavaScript into an input field.
+If the app does not sanitize input, the script runs in the 
+browser. Used to steal cookies, sessions, or redirect users.
+
+SQL Injection:
+Attacker inserts SQL code into a login/input field. The database 
+executes it, allowing authentication bypass or data theft.
+
+Docker:
+A tool that runs pre-built application containers. Instead of 
+manually installing Juice Shop, Docker downloads and runs it 
+as a ready package in one command.
+
+================================================================
+STEP BY STEP PROCEDURE
+================================================================
+
+--- PHASE 1: SETTING UP KALI LINUX ---
+
+STEP 1: Start Kali Linux
+- Open VMware on your Windows PC
+- Start your Kali Linux virtual machine
+- Log in with your credentials
+- Right click on the desktop
+- Click "Open Terminal"
+- You will see a prompt like: (kali@kali)-[~]$
+- This means terminal is ready
+
+STEP 2: Update Package List
+Type this command and press Enter:
+
+    sudo apt update
+
+- sudo = run as administrator
+- apt = Kali's software manager
+- update = refresh the list of available software
+- It will ask for your password, type it and press Enter
+- Wait for it to finish, you will see "Reading package lists... Done"
+
+--- PHASE 2: INSTALLING DOCKER ---
+
+STEP 3: Install Docker
+Type this command and press Enter:
+
+    sudo apt install -y docker.io
+
+- apt install = download and install software
+- -y = automatically say yes to all prompts
+- docker.io = the Docker software package
+- Wait for installation to complete
+- You will see many "Setting up..." lines, this is normal
+
+STEP 4: Start Docker Service
+Type this command and press Enter:
+
+    sudo systemctl start docker
+
+- systemctl = tool to manage background services
+- start = turn on the service
+- docker = the service we want to start
+- No output means it worked successfully
+
+--- PHASE 3: RUNNING JUICE SHOP ---
+
+STEP 5: Run OWASP Juice Shop using Docker
+Type this command and press Enter:
+
+    sudo docker run -d -p 3000:3000 bkimminich/juice-shop
+
+- docker run = download and run a container
+- -d = run in background (detached), terminal stays free
+- -p 3000:3000 = map port 3000 of container to port 3000 
+  of your Kali machine
+- bkimminich/juice-shop = official Juice Shop Docker image
+- First time only: it will download the image (2-3 minutes)
+- You will see many "Pull complete" lines, this is normal
+- When done, a long ID string appears = Juice Shop is running
+
+STEP 6: Open Juice Shop in Browser
+- Inside Kali, click the Firefox icon in the taskbar
+  (Make sure you open Firefox INSIDE the Kali VM window,
+   not on your Windows machine)
+- Click the address bar at the top
+- Type exactly:
+
+    localhost:3000
+
+- Press Enter
+- You should see the OWASP Juice Shop website with products
+- This confirms Juice Shop is running successfully
+
+--- PHASE 4: SETTING UP OWASP ZAP ---
+
+STEP 7: Install ZAP (if not already installed)
+Open a new terminal tab (click File > New Tab in terminal)
+Type this command and press Enter:
+
+    sudo apt install zaproxy -y
+
+- zaproxy = the OWASP ZAP package name in Kali
+- Wait for installation to complete (2-3 minutes)
+
+STEP 8: Launch ZAP
+In the terminal type:
+
+    zaproxy &
+
+- zaproxy = starts the ZAP application
+- & = runs it in background so terminal stays usable
+- ZAP will take 30-60 seconds to open
+- A window will appear asking about session persistence
+
+STEP 9: Handle the Session Popup
+- A dialog box appears asking:
+  "Do you want to persist the ZAP Session?"
+- The third option "No, I do not want to persist this session 
+  at this moment in time" is already selected (blue dot)
+- Click the "Start" button
+- ZAP main window opens with Welcome screen
+- At the bottom you will see: "Main Proxy: localhost:8080"
+- This confirms ZAP is listening on port 8080
+
+--- PHASE 5: CONNECTING ZAP TO JUICE SHOP ---
+
+STEP 10: Use ZAP Manual Explore
+- In the ZAP window, you will see three buttons in the center:
+  "Automated Sc..." | "Manual Explore" | "Learn More"
+- Click "Manual Explore" (the middle button)
+- A small window appears
+- In the URL field, type:
+
+    http://localhost:3000
+
+- Click the "Launch Browser" button
+- A new Firefox browser opens automatically
+- This browser is already connected through ZAP proxy
+- You will notice a red/orange "Not Secure" bar at the top
+  of this browser - this confirms traffic is going through ZAP
+- Juice Shop website loads in this browser
+
+--- PHASE 6: DEMONSTRATING XSS VULNERABILITY ---
+
+STEP 11: Perform XSS Attack
+- In the ZAP-launched Firefox browser showing Juice Shop
+- Look at the top right corner of the Juice Shop website
+- Click the magnifying glass (search icon)
+- A search box appears at the top right
+- Click inside the search box
+- Type exactly (copy carefully):
+
+    <iframe src="javascript:alert(`xss`)">
+
+- Press Enter
+- A popup dialog box appears from localhost:3000
+- It shows the text: xss
+- This popup PROVES that the app executed your injected 
+  JavaScript code - XSS vulnerability confirmed!
+- Click OK to close the popup
+- A green banner appears at the top of the page saying:
+  "You successfully solved a challenge: DOM XSS"
+- TAKE A SCREENSHOT OF THIS GREEN BANNER
+
+What just happened:
+The search field did not sanitize (clean) the input.
+The <iframe> tag with javascript: as source caused the browser
+to execute the alert() function. In a real attack, this could
+steal user cookies or redirect to malicious sites.
+
+--- PHASE 7: DEMONSTRATING SQL INJECTION ---
+
+STEP 12: Go to Login Page
+- In the same ZAP-launched Firefox browser
+- Look at top right of Juice Shop
+- Click "Account"
+- A dropdown appears
+- Click "Login"
+- The login page opens with Email and Password fields
+
+STEP 13: Perform SQL Injection
+- Click inside the Email field
+- Type exactly:
+
+    ' OR 1=1--
+
+- Click inside the Password field  
+- Type anything, for example:
+
+    abc
+
+- Click the "Log In" button
+- You are now logged in as admin@juice-sh.op
+- The account dropdown at top right shows: admin@juice-sh.op
+- TAKE A SCREENSHOT OF THIS
+
+What just happened:
+The app builds this SQL query normally:
+SELECT * FROM Users WHERE email='input' AND password='input'
+
+After our injection it becomes:
+SELECT * FROM Users WHERE email='' OR 1=1--' AND password='abc'
+
+Breaking it down:
+' = closes the email string early
+OR 1=1 = always true condition, so query always succeeds
+-- = comments out everything after (password check ignored)
+Result: Database returns first user (admin) and logs us in
+
+--- PHASE 8: VERIFY ZAP CAPTURED EVERYTHING ---
+
+STEP 14: Check ZAP History
+- Switch back to the ZAP window
+  (click it in the taskbar at top of Kali)
+- Look at the bottom panel - click "History" tab
+- You will see a list of all HTTP requests made
+- You can see the search request with XSS payload in URL
+- You can see the POST request to /rest/user/login
+- Click on the login POST request
+- In the right panel click "Request" tab
+- You can see the SQL injection payload was sent
+- TAKE A SCREENSHOT OF ZAP HISTORY TAB
+
+================================================================
+RESULT
+================================================================
+
+Successfully completed the following:
+1. Installed and launched OWASP Juice Shop using Docker 
+   on Kali Linux at localhost:3000
+2. Installed and launched OWASP ZAP version 2.17.0
+3. Connected browser traffic through ZAP proxy on port 8080
+4. Demonstrated XSS vulnerability in the search input field
+   - Juice Shop confirmed: "You successfully solved DOM XSS"
+5. Demonstrated SQL Injection on the login form
+   - Successfully logged in as admin@juice-sh.op without 
+     knowing the actual password
+
+================================================================
+CONCLUSION
+================================================================
+
+OWASP Juice Shop provides a safe and realistic environment to 
+practice identifying real-world web application vulnerabilities. 
+The OWASP Top 10 (2021) serves as an industry-standard reference 
+for critical web security risks. Both XSS and SQL Injection 
+fall under A03: Injection in the OWASP Top 10.
+
+OWASP ZAP as an intercepting proxy successfully captured all 
+HTTP traffic during testing, providing clear evidence of 
+vulnerability exploitation. 
+
+Mitigation for XSS:
+- Sanitize and encode all user inputs before displaying them
+- Implement Content Security Policy (CSP) headers
+- Use frameworks that auto-escape output
+
+Mitigation for SQL Injection:
+- Use parameterized queries / prepared statements
+- Validate and sanitize all user inputs
+- Apply least privilege to database accounts
+
+================================================================
+END OF PRACTICAL 1
+================================================================
