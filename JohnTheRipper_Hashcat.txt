@@ -1,0 +1,204 @@
+================================================================
+PRACTICAL: PASSWORD CRACKING USING JOHN THE RIPPER & HASHCAT
+================================================================
+
+AIM:
+To perform password cracking on MD5 hashes using dictionary
+attack with John the Ripper and Hashcat tools in Kali Linux.
+
+OBJECTIVE:
+1. Generate sample MD5 password hashes
+2. Crack hashes using John the Ripper (dictionary attack)
+3. Crack hashes using Hashcat (dictionary attack)
+4. Understand how weak passwords can be cracked ethically
+
+TOOLS USED:
+- John the Ripper (pre-installed in Kali Linux)
+- Hashcat (pre-installed in Kali Linux)
+- Operating System: Kali Linux (VMware)
+
+NOTE: Only self-generated test hashes are used.
+      No real systems are targeted. Purely for education.
+
+================================================================
+BEFORE STARTING - VMware Settings (if needed):
+================================================================
+- Shutdown VM
+- Edit Virtual Machine Settings
+- Memory: set to 4096 MB (4GB)
+- Processors: set to 4 cores
+- Start VM again
+
+================================================================
+STEP 1: Open Terminal and Verify Tools
+================================================================
+
+COMMAND:
+john --version
+
+MEANING: Checks if John the Ripper is installed and shows version
+
+COMMAND:
+hashcat --version
+
+MEANING: Checks if Hashcat is installed and shows version
+
+================================================================
+STEP 2: Generate MD5 Hashes of Sample Passwords
+================================================================
+
+COMMAND:
+echo -n "password123" | md5sum
+echo -n "hello" | md5sum
+echo -n "abc123" | md5sum
+
+MEANING:
+- echo -n sends the text without newline
+- md5sum converts it into an MD5 hash
+- These are the 3 passwords we will crack
+
+================================================================
+STEP 3: Save Hashes to a File
+================================================================
+
+COMMAND:
+echo "482c811da5d5b4bc6d497ffa98491e38" > hashes.txt
+echo "5d41402abc4b2a76b9719d911017c592" >> hashes.txt
+echo "e99a18c428cb38d5f260853678922e03" >> hashes.txt
+
+MEANING:
+- > creates a new file called hashes.txt
+- >> appends (adds) next hash to same file
+- These 3 hashes are MD5 of: password123, hello, abc123
+
+COMMAND:
+cat hashes.txt
+
+MEANING: Displays contents of hashes.txt to verify all 3 hashes
+
+================================================================
+STEP 4: Prepare Wordlist (Dictionary)
+================================================================
+
+COMMAND:
+sudo gunzip /usr/share/wordlists/rockyou.txt.gz
+
+MEANING:
+- Unzips the rockyou.txt wordlist that comes with Kali Linux
+- rockyou.txt contains millions of common passwords
+- If already unzipped, ignore any error and continue
+
+COMMAND:
+echo -e "password123\nhello\nabc123" > mylist.txt
+
+MEANING:
+- Creates a small custom wordlist with our 3 passwords
+- This is used as backup if rockyou.txt causes memory issues
+- -e flag enables interpretation of \n as new line
+
+================================================================
+STEP 5: CRACK USING JOHN THE RIPPER
+================================================================
+
+COMMAND:
+john --format=raw-md5 --wordlist=/usr/share/wordlists/rockyou.txt hashes.txt
+
+MEANING:
+- john = runs John the Ripper tool
+- --format=raw-md5 = specifies hash type is MD5
+- --wordlist = uses dictionary/wordlist attack method
+- hashes.txt = file containing our target hashes
+
+EXPECTED OUTPUT:
+password123   (?:1)
+hello         (?:2)
+abc123        (?:3)
+3 password hashes cracked, 0 left
+
+COMMAND:
+john --show --format=raw-md5 hashes.txt
+
+MEANING:
+- --show = displays all previously cracked passwords
+- Results are stored in ~/.john/john.pot file automatically
+
+================================================================
+STEP 6: CRACK USING HASHCAT
+================================================================
+
+COMMAND:
+hashcat -m 0 -a 0 hashes.txt mylist.txt --force -O -D 1 -w 1 --kernel-accel 1 --kernel-loops 1
+
+MEANING:
+- hashcat = runs Hashcat tool
+- -m 0 = hash mode 0 means MD5
+- -a 0 = attack mode 0 means dictionary attack
+- hashes.txt = file with our MD5 hashes
+- mylist.txt = our custom wordlist
+- --force = bypass hardware warnings (needed in VM)
+- -O = use optimized kernels (lower memory usage)
+- -D 1 = use CPU only (safer for VM, avoids GPU errors)
+- -w 1 = lowest workload mode (safest for low-spec PC)
+- --kernel-accel 1 = minimum batch size (saves memory)
+- --kernel-loops 1 = minimum loop count (saves memory)
+
+EXPECTED OUTPUT:
+482c811da5d5b4bc6d497ffa98491e38:password123
+5d41402abc4b2a76b9719d911017c592:hello
+e99a18c428cb38d5f260853678922e03:abc123
+Session..........: hashcat
+Status...........: Cracked
+
+COMMAND:
+hashcat -m 0 hashes.txt --show
+
+MEANING:
+- --show = displays cracked hash:password pairs from potfile
+- Potfile is ~/.local/share/hashcat/hashcat.potfile
+
+================================================================
+RESULT TABLE (Write this on answer sheet)
+================================================================
+
+Password   | MD5 Hash                         | Cracked By
+-----------|----------------------------------|------------------
+password123| 482c811da5d5b4bc6d497ffa98491e38 | John + Hashcat
+hello      | 5d41402abc4b2a76b9719d911017c592 | John + Hashcat
+abc123     | e99a18c428cb38d5f260853678922e03 | John + Hashcat
+
+Attack Type Used: Dictionary Attack
+Hash Algorithm  : MD5
+
+================================================================
+CONCLUSION (Write this on answer sheet)
+================================================================
+
+In this practical, we successfully cracked MD5 password hashes
+using two tools - John the Ripper and Hashcat - in Kali Linux.
+
+We used a dictionary attack method where a wordlist of common
+passwords is compared against the target hashes. Passwords like
+"password123", "hello", and "abc123" were cracked instantly
+because they exist in common wordlists.
+
+This demonstrates that weak and commonly used passwords are
+highly vulnerable to dictionary attacks. Strong, unique passwords
+and proper hashing algorithms (like bcrypt) should be used to
+protect against such attacks in real systems.
+
+Both tools work differently:
+- John the Ripper: Automatically detects formats, simple syntax
+- Hashcat: More flags required but faster, GPU-accelerated
+
+================================================================
+PRECAUTIONS (Write this on answer sheet)
+================================================================
+
+1. Only self-generated test hashes were used
+2. No real or live systems were targeted
+3. Practiced only in isolated VMware environment
+4. Tools used only for educational and ethical purposes
+
+================================================================
+END OF PRACTICAL
+================================================================
