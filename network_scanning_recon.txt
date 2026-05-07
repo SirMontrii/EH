@@ -1,0 +1,683 @@
+============================================================
+AIM OF PRACTICAL
+============================================================
+
+The aim of this practical is to understand:
+
+This practical helps us understand how systems communicate inside a network and how ethical hackers analyze network activity.
+1. Basic network communication
+2. IP addressing and routing
+3. Connectivity testing using ping
+4. Host discovery using Nmap
+5. Port and service scanning
+6. Packet capturing using Wireshark
+7. Analysis of DNS, TCP and HTTPS traffic
+
+============================================================
+SYSTEM CONFIGURATION USED
+============================================================
+
+Host Operating System:
+Windows 11
+
+Virtual Machine Software:
+VMware Workstation
+
+Guest Operating System:
+Kali Linux
+
+Kali Linux Network Interface:
+eth0
+
+Kali Linux IP Address:
+192.168.22.128
+
+Windows VMware NAT Adapter IP:
+192.168.22.1
+
+Windows WiFi IP:
+192.168.1.5
+
+Default Gateway:
+192.168.1.1
+
+VMware NAT Network:
+192.168.22.0/24
+
+============================================================
+STEP 1 — START KALI LINUX VIRTUAL MACHINE
+============================================================
+
+1. Open VMware Workstation.
+2. Start Kali Linux Virtual Machine.
+3. Login into Kali Linux.
+
+Purpose:
+Kali Linux contains networking and ethical hacking tools required for this practical.
+
+============================================================
+STEP 2 — OPEN TERMINAL
+============================================================
+
+Shortcut:
+
+CTRL + ALT + T
+
+Purpose:
+Terminal is used to execute Linux networking commands.
+
+============================================================
+STEP 3 — CHECK INTERNET CONNECTIVITY
+============================================================
+
+Run command:
+
+ping -c 4 google.com
+
+Explanation of command:
+
+ping
+= tests connectivity between systems
+
+-c 4
+= sends only 4 packets
+
+google.com
+= target server
+
+Purpose:
+Checks whether Kali Linux can access internet.
+
+Focus on output:
+
+64 bytes from ...
+
+AND
+
+4 packets transmitted
+4 received
+
+Observation:
+Internet connectivity was working successfully.
+
+Meaning:
+Kali Linux was able to send and receive packets successfully.
+
+============================================================
+STEP 4 — FIND KALI LINUX IP ADDRESS
+============================================================
+
+Run command:
+
+ifconfig
+
+IF COMMAND DOES NOT WORK:
+
+Run:
+
+sudo apt install net-tools -y
+
+Then run again:
+
+ifconfig
+
+Purpose:
+Displays network interface configuration.
+
+Focus only on:
+
+eth0
+
+Observed output:
+
+inet 192.168.22.128
+
+Observation:
+Kali Linux IP Address identified as:
+
+192.168.22.128
+
+Important:
+Only eth0 interface was considered because it is the active VMware network interface.
+
+Ignored interfaces:
+
+1. docker0
+2. lo
+3. veth interfaces
+
+Reason:
+These are internal virtual interfaces and not part of the main VMware network.
+
+Meaning of important terms:
+
+eth0
+= active Ethernet network interface
+
+inet
+= IPv4 address
+
+============================================================
+STEP 5 — CHECK NETWORK ROUTING
+============================================================
+
+Run command:
+
+ip route
+
+Purpose:
+Displays routing table and gateway information.
+
+Focus on output:
+
+default via ...
+
+Meaning:
+
+default
+= default route to internet
+
+via
+= route passes through gateway
+
+gateway IP
+= router or NAT device used for internet access
+
+Observation:
+Default route and gateway information were displayed successfully.
+
+============================================================
+STEP 6 — FIND WINDOWS IP ADDRESS
+============================================================
+
+Go to Windows 11.
+
+Open Command Prompt.
+
+Run command:
+
+ipconfig
+
+Purpose:
+Displays Windows network configuration.
+
+Important observed interfaces:
+
+WiFi Adapter:
+IPv4 Address:
+192.168.1.5
+
+VMware NAT Adapter VMnet8:
+IPv4 Address:
+192.168.22.1
+
+Observation:
+192.168.22.1 was used for communication with Kali Linux because both belong to same VMware NAT network.
+
+Important understanding:
+
+192.168.1.5
+= real Windows WiFi IP
+
+192.168.22.1
+= VMware virtual network adapter IP
+
+============================================================
+STEP 7 — UNDERSTAND THE NETWORK STRUCTURE
+============================================================
+
+Observed network devices:
+
+Kali Linux:
+192.168.22.128
+
+Windows VMware Adapter:
+192.168.22.1
+
+VMware NAT Gateway:
+192.168.22.254
+
+Observation:
+All systems belong to VMware NAT network:
+
+192.168.22.0/24
+
+Meaning of /24:
+First three octets identify network.
+
+Example:
+
+192.168.22
+
+Devices with same first three octets belong to same local network.
+
+============================================================
+STEP 8 — TEST CONNECTIVITY BETWEEN SYSTEMS
+============================================================
+
+Go back to Kali Linux terminal.
+
+Run command:
+
+ping -c 4 192.168.22.1
+
+Purpose:
+Checks communication between Kali Linux and Windows VMware adapter.
+
+Focus on output:
+
+64 bytes from 192.168.22.1
+
+Observation:
+Communication between Kali Linux and Windows system was successful.
+
+Meaning:
+Both systems were reachable inside local VMware network.
+
+============================================================
+STEP 9 — VIEW ARP TABLE
+============================================================
+
+Run command:
+
+arp -a
+
+Purpose:
+Displays nearby devices and their MAC addresses.
+
+Observed output:
+
+192.168.22.2
+00:50:56:ed:e6:23
+
+192.168.22.254
+00:50:56:f0:27:ca
+
+Observation:
+ARP table successfully mapped IP addresses to MAC addresses.
+
+Meaning:
+
+IP Address
+= logical address of device
+
+MAC Address
+= physical hardware address of network card
+
+ARP
+= Address Resolution Protocol
+
+ARP converts:
+
+IP Address → MAC Address
+
+Important:
+docker0 entry was ignored because it belongs to Docker internal network.
+
+============================================================
+STEP 10 — INSTALL NMAP
+============================================================
+
+Run command:
+
+sudo apt update
+
+Then run:
+
+sudo apt install nmap -y
+
+Verify installation:
+
+nmap --version
+
+Purpose:
+Nmap is used for network scanning and reconnaissance.
+
+Nmap can:
+1. Discover hosts
+2. Scan open ports
+3. Detect services
+4. Detect operating systems
+
+============================================================
+STEP 11 — DISCOVER ACTIVE HOSTS
+============================================================
+
+Run command:
+
+nmap -sn 192.168.22.0/24
+
+Meaning of command:
+
+-sn
+= ping scan only
+
+No port scanning performed.
+
+Purpose:
+Discovers active devices in local network.
+
+Focus on output:
+
+Host is up
+
+Observation:
+Active hosts inside VMware NAT network were identified successfully.
+
+============================================================
+STEP 12 — SCAN OPEN PORTS
+============================================================
+
+Run command:
+
+nmap 192.168.22.1
+
+Purpose:
+Scans open ports on target system.
+
+Focus on output:
+
+PORT     STATE   SERVICE
+
+Example:
+
+135/tcp  open    msrpc
+445/tcp  open    microsoft-ds
+
+Meaning:
+
+PORT
+= communication endpoint
+
+STATE open
+= service is accepting connections
+
+SERVICE
+= application/service running on port
+
+Observation:
+Open ports and running services were identified successfully.
+
+============================================================
+STEP 13 — SERVICE VERSION DETECTION
+============================================================
+
+Run command:
+
+nmap -sV 192.168.22.1
+
+Meaning of command:
+
+-sV
+= service version detection
+
+Purpose:
+Identifies service names and software versions.
+
+Observation:
+Service information and version details were detected successfully.
+
+============================================================
+STEP 14 — OPERATING SYSTEM DETECTION
+============================================================
+
+Run command:
+
+sudo nmap -O 192.168.22.1
+
+Meaning of command:
+
+-O
+= operating system detection
+
+Purpose:
+Attempts to identify target operating system.
+
+Observation:
+Operating system fingerprinting was performed successfully.
+
+============================================================
+STEP 15 — INSTALL WIRESHARK
+============================================================
+
+Run command:
+
+sudo apt install wireshark -y
+
+If prompted:
+
+Allow non-superusers to capture packets?
+
+Select:
+
+YES
+
+Purpose:
+Wireshark is used for packet capturing and traffic analysis.
+
+============================================================
+STEP 16 — OPEN WIRESHARK
+============================================================
+
+Run command:
+
+wireshark
+
+OR open Wireshark from applications menu.
+
+Purpose:
+Starts graphical packet analysis tool.
+
+============================================================
+STEP 17 — START LIVE PACKET CAPTURE
+============================================================
+
+Inside Wireshark:
+
+1. Locate interface:
+   eth0
+
+2. Double click eth0
+OR
+3. Click blue shark-fin button
+
+Purpose:
+Starts live network packet capture.
+
+Observation:
+Live packets started appearing in Wireshark window.
+
+Meaning:
+Every incoming and outgoing packet was being captured.
+
+============================================================
+STEP 18 — GENERATE NETWORK TRAFFIC
+============================================================
+
+Open Firefox or Chrome inside Kali Linux.
+
+Visit websites:
+
+1. google.com
+2. youtube.com
+3. github.com
+
+Browse for approximately 1 minute.
+
+Purpose:
+Generate live network traffic.
+
+Observation:
+DNS requests, TCP connections and HTTPS packets were generated successfully.
+
+============================================================
+STEP 19 — STOP PACKET CAPTURE
+============================================================
+
+Click RED stop button in Wireshark.
+
+Purpose:
+Stops packet recording process.
+
+Observation:
+Packet capture completed successfully.
+
+============================================================
+STEP 20 — ANALYZE DNS TRAFFIC
+============================================================
+
+In Wireshark filter bar type:
+
+dns
+
+Press Enter.
+
+Purpose:
+Displays DNS packets only.
+
+Meaning of DNS:
+DNS converts domain names into IP addresses.
+
+Focus on:
+
+Queries for:
+google.com
+youtube.com
+
+Observation:
+DNS requests generated during web browsing were observed successfully.
+
+============================================================
+STEP 21 — ANALYZE TCP TRAFFIC
+============================================================
+
+Apply filter:
+
+tcp
+
+Purpose:
+Displays TCP packets only.
+
+Meaning of TCP:
+Transmission Control Protocol used for reliable communication.
+
+Focus on:
+
+SYN
+ACK
+
+Meaning:
+TCP three-way handshake used for establishing communication.
+
+Observation:
+TCP communication packets were analyzed successfully.
+
+============================================================
+STEP 22 — ANALYZE HTTPS TRAFFIC
+============================================================
+
+Apply filter:
+
+tls
+
+OR
+
+tcp.port == 443
+
+Purpose:
+Displays encrypted HTTPS traffic.
+
+Meaning:
+HTTPS uses TLS encryption for secure communication.
+
+Observation:
+Encrypted TLS packets generated during browsing were observed successfully.
+
+============================================================
+STEP 23 — INSPECT PACKET STRUCTURE
+============================================================
+
+Click any packet in Wireshark.
+
+Observed sections:
+
+1. Ethernet Header
+2. IP Header
+3. TCP/UDP Header
+4. Payload/Data
+
+Purpose:
+Analyze structure of packet communication.
+
+Focus on:
+
+Source IP
+Destination IP
+Protocol
+Packet Length
+Information field
+
+Observation:
+Packet structure and protocol layers were analyzed successfully.
+
+============================================================
+IMPORTANT CONCEPTS UNDERSTOOD
+============================================================
+
+PING
+= checks connectivity
+
+IP ADDRESS
+= logical device identity in network
+
+MAC ADDRESS
+= physical hardware address
+
+ARP
+= converts IP address into MAC address
+
+NMAP
+= network scanning tool
+
+PORT
+= communication endpoint
+
+DNS
+= converts domain names into IP addresses
+
+TCP
+= reliable communication protocol
+
+HTTPS/TLS
+= encrypted communication
+
+WIRESHARK
+= packet capture and analysis tool
+
+
+============================================================
+IMPORTANT OBSERVATIONS
+============================================================
+
+1. Kali Linux IP Address:
+192.168.22.128
+
+2. Windows VMware NAT Adapter IP:
+192.168.22.1
+
+3. Windows WiFi IP:
+192.168.1.5
+
+4. Active hosts discovered successfully.
+
+5. Open ports identified successfully.
+
+6. Services and versions detected successfully.
+
+7. DNS packets observed during browsing.
+
+8. TCP communication packets analyzed.
+
+9. HTTPS encrypted traffic observed successfully.
+
+============================================================
